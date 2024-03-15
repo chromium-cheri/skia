@@ -57,7 +57,11 @@ public:
     // by the pixel data for each level. On 32-bit platforms, Level would naturally be 4 byte
     // aligned, so the pixel data could end up with 4 byte alignment. If the pixel data is F16,
     // it must be 8 byte aligned. To ensure this, keep the Level struct 8 byte aligned as well.
+#if defined(__CHERI_PURE_CAPABILITY__)
+    struct alignas(max_align_t) Level {
+#else // defined(__CHERI_PURE_CAPABILITY__)
     struct alignas(8) Level {
+#endif // defined(__CHERI_PURE_CAPABILITY__)
         SkPixmap    fPixmap;
         SkSize      fScale; // < 1.0
     };
