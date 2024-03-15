@@ -31,8 +31,13 @@ using namespace skia_private;
 
 namespace {
 struct RunFontStorageEquivalent {
+#if defined(__CHERI_PURE_CAPABILITY__)
+    void*    fTypeface;
+    SkScalar fSize, fScaleX;
+#else // defined(__CHERI_PURE_CAPABILITY__)
     SkScalar fSize, fScaleX;
     void*    fTypeface;
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     SkScalar fSkewX;
     uint32_t fFlags;
 };
