@@ -233,6 +233,9 @@ private:
     void ensureSpace(uint32_t size, uint32_t alignment);
 
     char* allocObject(uint32_t size, uint32_t alignment) {
+#if defined(__CHERI_PURE_CAPABILITY__)
+        __attribute__((cheri_no_provenance))
+#endif // defined(__CHERI_PURE_CAPABILITY__)
         uintptr_t mask = alignment - 1;
         uintptr_t alignedOffset = (~reinterpret_cast<uintptr_t>(fCursor) + 1) & mask;
         uintptr_t totalSize = size + alignedOffset;
