@@ -57,7 +57,11 @@ private:
     // We also align between the Node* and the float which may add some extra padding.
     constexpr static int kTreeNodeSize = SkAlignTo(sizeof(void*) + sizeof(float), alignof(void*)) +
                                          2 * sizeof(Node*);
+#if defined(__CHERI_PURE_CAPABILITY__)
+    constexpr static int kLeafNodeSize = 32 + (2 + 64) * sizeof(Rect);
+#else // defined(__CHERI_PURE_CAPABILITY__)
     constexpr static int kLeafNodeSize = 16 + (2 + 64) * sizeof(Rect);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     constexpr static int kPadSize = 256;  // For footers and alignment.
     SkArenaAlloc fArena{kLeafNodeSize + kTreeNodeSize + kPadSize*2};
     Node* fRoot;
