@@ -2400,7 +2400,11 @@ private:
     };
 
     // the first N recs that can fit here mean we won't call malloc
+ #if defined(__CHERI_PURE_CAPABILITY__)
+    static constexpr int kMCRecSize      = 128; // most recent measurement
+ #else // defined(__CHERI_PURE_CAPABILITY__)
     static constexpr int kMCRecSize      = 96; // most recent measurement
+ #endif // defined(__CHERI_PURE_CAPABILITY__)
     static constexpr int kMCRecCount     = 32; // common depth for save/restores
 
     intptr_t fMCRecStorage[kMCRecSize * kMCRecCount / sizeof(intptr_t)];
