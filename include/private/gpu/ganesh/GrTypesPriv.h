@@ -495,7 +495,11 @@ enum class GrBackendObjectOwnership : bool {
 /*
  * Object for CPU-GPU synchronization
  */
+#if defined(__CHERI_PURE_CAPABILITY__)
+typedef uintptr_t GrFence;
+#else // defined(__CHERI_PURE_CAPABILITY__)
 typedef uint64_t GrFence;
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 
 /**
  * Used to include or exclude specific GPU path renderers for testing purposes.
