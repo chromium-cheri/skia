@@ -54,7 +54,11 @@ namespace skjson {
  *         }
  *     }
  */
+#if defined(__CHERI_PURE_CAPABILITY__)
+class alignas(alignof(max_align_t)) Value {
+#else // defined(__CHERI_PURE_CAPABILITY__)
 class alignas(8) Value {
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 public:
     enum class Type {
         kNull,
