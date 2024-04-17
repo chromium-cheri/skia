@@ -92,7 +92,11 @@ public:
         */
         SK_SPI bool next(SkString* name, bool getDir = false);
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+        static const size_t kStorageSize = 80;
+#else // defined(__CHERI_PURE_CAPABILITY__)
         static const size_t kStorageSize = 40;
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     private:
         alignas(void*) alignas(double) char fSelf[kStorageSize];
     };
