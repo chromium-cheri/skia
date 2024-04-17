@@ -29,8 +29,13 @@ namespace skjson {
 
 // #define SK_JSON_REPORT_ERRORS
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+static_assert( sizeof(Value) == sizeof(void *), "");
+static_assert(alignof(Value) == alignof(max_align_t), "");
+#else // defined(__CHERI_PURE_CAPABILITY__)
 static_assert( sizeof(Value) == 8, "");
 static_assert(alignof(Value) == 8, "");
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 
 static constexpr size_t kRecAlign = alignof(Value);
 
