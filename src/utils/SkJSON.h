@@ -204,7 +204,11 @@ protected:
     }
 
 private:
+#if defined(__CHERI_PURE_CAPABILITY__)
+    inline static constexpr size_t kValueSize = 16;
+#else // defined(__CHERI_PURE_CAPABILITY__)
     inline static constexpr size_t kValueSize = 8;
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 
     uint8_t fData8[kValueSize];
 
