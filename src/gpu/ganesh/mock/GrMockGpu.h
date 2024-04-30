@@ -125,7 +125,11 @@ private:
                             GrColorType surfaceColorType,
                             GrColorType bufferColorType,
                             sk_sp<GrGpuBuffer>,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                            uintptr_t offset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
                             size_t offset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                             size_t rowBytes) override {
         return true;
     }
@@ -135,7 +139,11 @@ private:
                               GrColorType surfaceColorType,
                               GrColorType bufferColorType,
                               sk_sp<GrGpuBuffer>,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                              uintptr_t offset) override {
+#else // defined(__CHERI_PURE_CAPABILITY__)
                               size_t offset) override {
+#endif // defined(__CHERI_PURE_CAPABILITY__)
         return true;
     }
 
