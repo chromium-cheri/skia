@@ -100,7 +100,11 @@ public:
     //
     // If caps.nativeDrawIndirectSupport() is unavailable, then 'drawIndirectBuffer' must be a
     // GrCpuBuffer in order to polyfill. Performance may suffer in this scenario.
+#if defined(__CHERI_PURE_CAPABILITY__)
+    void drawIndirect(const GrBuffer* drawIndirectBuffer, uintptr_t bufferOffset, int drawCount);
+#else // defined(__CHERI_PURE_CAPABILITY__)
     void drawIndirect(const GrBuffer* drawIndirectBuffer, size_t bufferOffset, int drawCount);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 
     // Executes multiple draws from an array of GrDrawIndexedIndirectCommand in the provided buffer.
     //
@@ -191,7 +195,11 @@ private:
                                  int baseVertex) = 0;
     virtual void onDrawIndexedInstanced(int indexCount, int baseIndex, int instanceCount,
                                         int baseInstance, int baseVertex) = 0;
+#if defined(__CHERI_PURE_CAPABILITY__)
+    virtual void onDrawIndirect(const GrBuffer*, uintptr_t offset, int drawCount) {
+#else // defined(__CHERI_PURE_CAPABILITY__)
     virtual void onDrawIndirect(const GrBuffer*, size_t offset, int drawCount) {
+#endif // defined(__CHERI_PURE_CAPABILITY__)
         SK_ABORT("Not implemented.");  // Only called if caps.nativeDrawIndirectSupport().
     }
     virtual void onDrawIndexedIndirect(const GrBuffer*, size_t offset, int drawCount) {

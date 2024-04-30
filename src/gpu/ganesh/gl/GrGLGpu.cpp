@@ -967,7 +967,11 @@ bool GrGLGpu::onTransferPixelsTo(GrTexture* texture,
                                  GrColorType textureColorType,
                                  GrColorType bufferColorType,
                                  sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                 uintptr_t offset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                  size_t offset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                                  size_t rowBytes) {
     GrGLTexture* glTex = static_cast<GrGLTexture*>(texture);
 
@@ -1036,7 +1040,11 @@ bool GrGLGpu::onTransferPixelsFrom(GrSurface* surface,
                                    GrColorType surfaceColorType,
                                    GrColorType dstColorType,
                                    sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                   uintptr_t offset) {
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                    size_t offset) {
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     auto* glBuffer = static_cast<GrGLBuffer*>(transferBuffer.get());
     SkASSERT(glBuffer->size() >= offset + (rect.width() *
                                            rect.height()*

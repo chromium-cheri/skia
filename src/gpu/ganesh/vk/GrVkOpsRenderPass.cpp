@@ -789,7 +789,11 @@ void GrVkOpsRenderPass::onDrawIndexedInstanced(int indexCount, int baseIndex, in
     fCurrentCBIsEmpty = false;
 }
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+void GrVkOpsRenderPass::onDrawIndirect(const GrBuffer* drawIndirectBuffer, uintptr_t offset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
 void GrVkOpsRenderPass::onDrawIndirect(const GrBuffer* drawIndirectBuffer, size_t offset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                                        int drawCount) {
     SkASSERT(!drawIndirectBuffer->isCpuBuffer());
     if (!fCurrentRenderPass) {

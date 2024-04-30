@@ -46,7 +46,11 @@ private:
     void onDrawIndexed(int, int, uint16_t, uint16_t, int) override { this->noopDraw(); }
     void onDrawInstanced(int, int, int, int) override { this->noopDraw(); }
     void onDrawIndexedInstanced(int, int, int, int, int) override { this->noopDraw(); }
+#if defined(__CHERI_PURE_CAPABILITY__)
+    void onDrawIndirect(const GrBuffer*, uintptr_t, int) override { this->noopDraw(); }
+#else // defined(__CHERI_PURE_CAPABILITY__)
     void onDrawIndirect(const GrBuffer*, size_t, int) override { this->noopDraw(); }
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     void onDrawIndexedIndirect(const GrBuffer*, size_t, int) override { this->noopDraw(); }
     void onClear(const GrScissorState& scissor, std::array<float, 4>) override {
         this->markRenderTargetDirty();

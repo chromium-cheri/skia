@@ -270,7 +270,11 @@ void GrD3DOpsRenderPass::onDrawIndexedInstanced(int indexCount, int baseIndex, i
     fGpu->stats()->incNumDraws();
 }
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+void GrD3DOpsRenderPass::onDrawIndirect(const GrBuffer* buffer, uintptr_t offset, int drawCount) {
+#else // defined(__CHERI_PURE_CAPABILITY__)
 void GrD3DOpsRenderPass::onDrawIndirect(const GrBuffer* buffer, size_t offset, int drawCount) {
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     constexpr unsigned int kSlot = 0;
     sk_sp<GrD3DCommandSignature> cmdSig = fGpu->resourceProvider().findOrCreateCommandSignature(
             GrD3DCommandSignature::ForIndexed::kNo, kSlot);
