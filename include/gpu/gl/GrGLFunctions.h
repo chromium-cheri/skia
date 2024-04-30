@@ -301,7 +301,11 @@ public:
 private:
     using Call = R(const void* buf, Args...);
     Call* fCall = nullptr;
+#if defined(__CHERI_PURE_CAPABILITY__)
+    size_t fBuf[8];
+#else // defined(__CHERI_PURE_CAPABILITY__)
     size_t fBuf[4];
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 };
 
 #endif
