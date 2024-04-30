@@ -82,7 +82,11 @@ void GrGLAttribArrayState::set(GrGLGpu* gpu,
                                GrVertexAttribType cpuType,
                                SkSLType gpuType,
                                GrGLsizei stride,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                               uintptr_t offsetInBytes,
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                size_t offsetInBytes,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                                int divisor) {
     SkASSERT(index >= 0 && index < fAttribArrayStates.size());
     SkASSERT(0 == divisor || gpu->caps()->drawInstancedSupport());
