@@ -334,7 +334,11 @@ public:
                           GrColorType textureColorType,
                           GrColorType bufferColorType,
                           sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                          uintptr_t offset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
                           size_t offset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                           size_t rowBytes);
 
     /**
@@ -360,7 +364,11 @@ public:
                             GrColorType surfaceColorType,
                             GrColorType bufferColorType,
                             sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                            uintptr_t offset);
+#else // defined(__CHERI_PURE_CAPABILITY__)
                             size_t offset);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 
     // Called to perform a surface to surface copy. Fallbacks to issuing a draw from the src to dst
     // take place at higher levels and this function implement faster copy paths. The src and dst

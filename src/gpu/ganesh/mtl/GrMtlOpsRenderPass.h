@@ -51,7 +51,11 @@ private:
                          int baseVertex) override;
     void onDrawIndexedInstanced(int indexCount, int baseIndex, int instanceCount, int baseInstance,
                                 int baseVertex) override;
+#if defined(__CHERI_PURE_CAPABILITY__)
+    void onDrawIndirect(const GrBuffer* drawIndirectBuffer, uintptr_t bufferOffset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
     void onDrawIndirect(const GrBuffer* drawIndirectBuffer, size_t bufferOffset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                         int drawCount) override;
     void onDrawIndexedIndirect(const GrBuffer* drawIndirectBuffer, size_t bufferOffset,
                                int drawCount) override;

@@ -264,7 +264,11 @@ void GrGLOpsRenderPass::onDrawIndexedInstanced(int indexCount, int baseIndex, in
     fGpu->didDrawTo(fRenderTarget);
 }
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+static const void* buffer_offset_to_gl_address(const GrBuffer* drawIndirectBuffer, uintptr_t offset) {
+#else // defined(__CHERI_PURE_CAPABILITY__)
 static const void* buffer_offset_to_gl_address(const GrBuffer* drawIndirectBuffer, size_t offset) {
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     if (drawIndirectBuffer->isCpuBuffer()) {
         return static_cast<const GrCpuBuffer*>(drawIndirectBuffer)->data() + offset;
     } else {
@@ -272,7 +276,11 @@ static const void* buffer_offset_to_gl_address(const GrBuffer* drawIndirectBuffe
     }
 }
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+void GrGLOpsRenderPass::onDrawIndirect(const GrBuffer* drawIndirectBuffer, uintptr_t offset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
 void GrGLOpsRenderPass::onDrawIndirect(const GrBuffer* drawIndirectBuffer, size_t offset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                                        int drawCount) {
     using MultiDrawType = GrGLCaps::MultiDrawType;
 

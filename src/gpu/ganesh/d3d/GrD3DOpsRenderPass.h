@@ -56,7 +56,11 @@ private:
                          int baseVertex) override;
     void onDrawIndexedInstanced(int indexCount, int baseIndex, int instanceCount, int baseInstance,
                                 int baseVertex) override;
+#if defined(__CHERI_PURE_CAPABILITY__)
+    void onDrawIndirect(const GrBuffer*, uintptr_t offset, int drawCount) override;
+#else // defined(__CHERI_PURE_CAPABILITY__)
     void onDrawIndirect(const GrBuffer*, size_t offset, int drawCount) override;
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     void onDrawIndexedIndirect(const GrBuffer*, size_t offset, int drawCount) override;
 
     void onClear(const GrScissorState& scissor, std::array<float, 4> color) override;

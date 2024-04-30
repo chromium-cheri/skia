@@ -262,7 +262,11 @@ void GrOpsRenderPass::drawIndexedInstanced(int indexCount, int baseIndex, int in
     this->onDrawIndexedInstanced(indexCount, baseIndex, instanceCount, baseInstance, baseVertex);
 }
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+void GrOpsRenderPass::drawIndirect(const GrBuffer* drawIndirectBuffer, uintptr_t bufferOffset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
 void GrOpsRenderPass::drawIndirect(const GrBuffer* drawIndirectBuffer, size_t bufferOffset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                                    int drawCount) {
     SkASSERT(this->gpu()->caps()->drawInstancedSupport());
     SkASSERT(drawIndirectBuffer->isCpuBuffer() ||
