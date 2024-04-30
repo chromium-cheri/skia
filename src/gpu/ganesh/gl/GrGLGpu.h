@@ -409,7 +409,11 @@ private:
                             GrColorType textureColorType,
                             GrColorType bufferColorType,
                             sk_sp<GrGpuBuffer>,
+#if (__CHERI_PURE_CAPABILITY__)
+                            uintptr_t offset,
+#else // (__CHERI_PURE_CAPABILITY__)
                             size_t offset,
+#endif // (__CHERI_PURE_CAPABILITY__)
                             size_t rowBytes) override;
 
     bool onTransferPixelsFrom(GrSurface*,
@@ -417,7 +421,11 @@ private:
                               GrColorType surfaceColorType,
                               GrColorType bufferColorType,
                               sk_sp<GrGpuBuffer>,
+#if (__CHERI_PURE_CAPABILITY__)
+                              uintptr_t offset) override;
+#else // (__CHERI_PURE_CAPABILITY__)
                               size_t offset) override;
+#endif // (__CHERI_PURE_CAPABILITY__)
 
     bool readOrTransferPixelsFrom(GrSurface*,
                                   SkIRect rect,

@@ -351,7 +351,11 @@ public:
                           GrColorType textureColorType,
                           GrColorType bufferColorType,
                           sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                          uintptr_t offset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
                           size_t offset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                           size_t rowBytes);
 
     /**
@@ -377,7 +381,11 @@ public:
                             GrColorType surfaceColorType,
                             GrColorType bufferColorType,
                             sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                            uintptr_t offset);
+#else // defined(__CHERI_PURE_CAPABILITY__)
                             size_t offset);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 
     // Called to perform a surface to surface copy. Fallbacks to issuing a draw from the src to dst
     // take place at higher levels and this function implement faster copy paths. The src and dst
@@ -824,7 +832,11 @@ private:
                                     GrColorType textureColorType,
                                     GrColorType bufferColorType,
                                     sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                    uintptr_t offset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                     size_t offset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                                     size_t rowBytes) = 0;
 
     // overridden by backend-specific derived class to perform the surface transfer
@@ -833,7 +845,11 @@ private:
                                       GrColorType surfaceColorType,
                                       GrColorType bufferColorType,
                                       sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                      uintptr_t offset) = 0;
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                       size_t offset) = 0;
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 
     // overridden by backend-specific derived class to perform the resolve
     virtual void onResolveRenderTarget(GrRenderTarget* target, const SkIRect& resolveRect) = 0;

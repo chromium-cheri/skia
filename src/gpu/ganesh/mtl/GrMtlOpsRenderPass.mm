@@ -452,7 +452,11 @@ void GrMtlOpsRenderPass::onDrawIndexedInstanced(
 }
 
 void GrMtlOpsRenderPass::onDrawIndirect(const GrBuffer* drawIndirectBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                        uintptr_t bufferOffset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                         size_t bufferOffset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                                         int drawCount) {
     SkASSERT(fGpu->caps()->nativeDrawIndirectSupport());
     SkASSERT(fActivePipelineState);

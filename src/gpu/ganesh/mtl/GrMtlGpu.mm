@@ -1448,7 +1448,11 @@ bool GrMtlGpu::onTransferPixelsTo(GrTexture* texture,
                                   GrColorType textureColorType,
                                   GrColorType bufferColorType,
                                   sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                  uintptr_t offset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                   size_t offset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                                   size_t rowBytes) {
     SkASSERT(texture);
     SkASSERT(transferBuffer);
@@ -1503,7 +1507,11 @@ bool GrMtlGpu::onTransferPixelsFrom(GrSurface* surface,
                                     GrColorType surfaceColorType,
                                     GrColorType bufferColorType,
                                     sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                    uintptr_t offset) {
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                     size_t offset) {
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     SkASSERT(surface);
     SkASSERT(transferBuffer);
 

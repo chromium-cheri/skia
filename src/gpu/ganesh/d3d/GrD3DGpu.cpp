@@ -836,7 +836,11 @@ bool GrD3DGpu::onTransferPixelsTo(GrTexture* texture,
                                   GrColorType surfaceColorType,
                                   GrColorType bufferColorType,
                                   sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                  uintptr_t bufferOffset,
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                   size_t bufferOffset,
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                                   size_t rowBytes) {
     if (!this->currentCommandList()) {
         return false;
@@ -904,7 +908,11 @@ bool GrD3DGpu::onTransferPixelsFrom(GrSurface* surface,
                                     GrColorType surfaceColorType,
                                     GrColorType bufferColorType,
                                     sk_sp<GrGpuBuffer> transferBuffer,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                    uintptr_t offset) {
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                     size_t offset) {
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     if (!this->currentCommandList()) {
         return false;
     }
