@@ -46,7 +46,11 @@ private:
     const void* offsetForBaseIndex(int baseIndex) const {
         if (!fIndexPointer) {
             // nullptr != 0. Adding an offset to a nullptr is undefined.
+#if defined(__CHERI_PURE_CAPABILITY__)
+            return (void*)(uintptr_t)(baseIndex * sizeof(uint16_t));
+#else // defined(__CHERI_PURE_CAPABILITY__)
             return (void*)(baseIndex * sizeof(uint16_t));
+#endif // defined(__CHERI_PURE_CAPABILITY__)
         }
         return fIndexPointer + baseIndex;
     }
