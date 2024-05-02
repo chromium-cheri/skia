@@ -27,8 +27,13 @@ using UnpackedType = typename std::conditional<sizeof(T) <= sizeof(void*), T, co
 template <typename T>
 [[maybe_unused]] static void* Pack(const T& ctx, SkArenaAlloc* alloc) {
     // If the context is small enough to fit in a pointer, bit-cast it; if not, alloc a copy.
+#if defined(__CHERI_PURE_CAPABILITY__)
+    if constexpr (sizeof(T) <= sizeof(void*)) {
+        return reinterpret_cast<void *>(static_cast<uintptr_t>(sk_bit_cast<ptraddr_t>(ctx)));
+#else // defined(__CHERI_PURE_CAPABILITY__)
     if constexpr (sizeof(T) <= sizeof(void*)) {
         return sk_bit_cast<void*>(ctx);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     } else {
         return alloc->make<T>(ctx);
     }
@@ -43,8 +48,13 @@ template <typename T>
     // If the context struct fits in a pointer, reinterpret the bits; if it doesn't, return
     // a reference. This can vary based on the architecture (32-bit pointers vs 64-bit) so we
     // let the compiler decide which is right, rather than hard-coding it.
+#if defined(__CHERI_PURE_CAPABILITY__)
+    if constexpr (sizeof(T) <= sizeof(ptraddr_t)) {
+        return sk_bit_cast<T>(static_cast<ptraddr_t>(reinterpret_cast<uintptr_t>(ctx)));
+#else // defined(__CHERI_PURE_CAPABILITY__)
     if constexpr (sizeof(T) <= sizeof(void*)) {
         return sk_bit_cast<T>(ctx);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     } else {
         return *ctx;
     }
