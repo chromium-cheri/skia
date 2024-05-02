@@ -48,11 +48,7 @@ static SK_ALWAYS_INLINE void sk_unaligned_store(P* ptr, T val) {
 // Copy the bytes from src into an instance of type Dst and return it.
 template <typename Dst, typename Src>
 static SK_ALWAYS_INLINE Dst sk_bit_cast(const Src& src) {
-#if defined(__CHERI_PURE_CAPABILITY__)
-    static_assert(sizeof(Dst) <= sizeof(Src));
-#else // defined(__CHERI_PURE_CAPABILITY__)
     static_assert(sizeof(Dst) == sizeof(Src));
-#endif // defined(__CHERI_PURE_CAPABILITY__)
     return sk_unaligned_load<Dst>(&src);
 }
 
