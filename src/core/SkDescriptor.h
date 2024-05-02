@@ -99,11 +99,22 @@ public:
 
 private:
     void free();
+#if defined(__CHERI_PURE_CAPABILITY__)
+    // Add explicit padding before the capability field to align to
+    // 8/16 bytes.
+    static constexpr size_t kStorageSize
+            = sizeof(SkDescriptor)
+              + sizeof(SkDescriptor::Entry) + sizeof(SkScalerContextRec) // for rec
+              + sizeof(SkDescriptor::Entry)
+              + sizeof(uint32_t) + sizeof(void*)                         // for typeface
+              + 32;   // slop for occasional small extras
+#else // defined(__CHERI_PURE_CAPABILITY__)
     static constexpr size_t kStorageSize
             = sizeof(SkDescriptor)
               + sizeof(SkDescriptor::Entry) + sizeof(SkScalerContextRec) // for rec
               + sizeof(SkDescriptor::Entry) + sizeof(void*)              // for typeface
               + 32;   // slop for occasional small extras
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 
     SkDescriptor*   fDesc{nullptr};
     alignas(uint32_t) char fStorage[kStorageSize];
