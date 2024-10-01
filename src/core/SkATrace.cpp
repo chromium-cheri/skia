@@ -43,7 +43,11 @@ SkEventTracer::Handle SkATrace::addTraceEvent(char phase,
                                               int numArgs,
                                               const char** argNames,
                                               const uint8_t* argTypes,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                              const uintptr_t* argValues,
+#else   // !__CHERI_PURE_CAPABILITY__
                                               const uint64_t* argValues,
+#endif  // !__CHERI_PURE_CAPABILITY__
                                               uint8_t flags) {
     if (fIsEnabled()) {
         if (TRACE_EVENT_PHASE_COMPLETE == phase ||
