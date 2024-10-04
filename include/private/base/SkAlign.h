@@ -21,10 +21,18 @@ template <typename T> static constexpr bool SkIsAlign4(T x) { return 0 == (x & 3
 template <typename T> static constexpr bool SkIsAlign8(T x) { return 0 == (x & 7); }
 
 template <typename T> static constexpr T SkAlignPtr(T x) {
+#if defined(__CHERI_PURE_CAPABILITY__)
+    return __builtin_align_up(x, alignof(max_align_t));
+#else  // !__CHERI_PURE_CAPABILITY__
     return sizeof(void*) == 8 ? SkAlign8(x) : SkAlign4(x);
+#endif  // !__CHERI_PURE_CAPABILITY__
 }
 template <typename T> static constexpr bool SkIsAlignPtr(T x) {
+#if defined(__CHERI_PURE_CAPABILITY__)
+    return __builtin_is_aligned(x, alignof(max_align_t));
+#else  // !__CHERI_PURE_CAPABILITY__
     return sizeof(void*) == 8 ? SkIsAlign8(x) : SkIsAlign4(x);
+#endif  // !__CHERI_PURE_CAPABILITY__
 }
 
 /**

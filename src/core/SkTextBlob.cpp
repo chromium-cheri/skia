@@ -412,6 +412,10 @@ void SkTextBlobBuilder::reserve(size_t size) {
         // the first allocation also includes blob storage
         // aligned up to a pointer alignment so SkTextBlob::RunRecords after it stay aligned.
         fStorageUsed = SkAlignPtr(sizeof(SkTextBlob));
+#if defined(__CHERI_PURE_CAPABILITY__)
+    } else {
+        fStorageUsed = SkAlignPtr(sizeof(SkTextBlob::RunRecord));
+#endif   // __CHERI_PURE_CAPABILITY__
     }
 
     fStorageSize = safe.add(fStorageUsed, size);
@@ -502,7 +506,12 @@ void SkTextBlobBuilder::allocInternal(const SkFont& font,
 
         this->reserve(runSize);
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+        SkASSERT((fStorageUsed >= SkAlignPtr(sizeof(SkTextBlob))) ||
+            (fStorageUsed >= SkAlignPtr(sizeof(SkTextBlob::RunRecord))));
+#else  // !__CHERI_PURE_CAPABILITY__
         SkASSERT(fStorageUsed >= SkAlignPtr(sizeof(SkTextBlob)));
+#endif  // !__CHERI_PURE_CAPABILITY__
         SkASSERT(fStorageUsed + runSize <= fStorageSize);
 
         SkTextBlob::RunRecord* run = new (fStorage.get() + fStorageUsed)
