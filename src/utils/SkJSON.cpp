@@ -494,7 +494,11 @@ private:
     //   - for arrays : fScopeIndex = -(index of first value in scope)
     //
     // fScopeIndex == 0 IFF we are at the top level (no current/active scope).
+#if defined(__CHERI_PURE_CAPABILITY__)
+    ssize_t               fScopeIndex = 0;
+#else   // !__CHERI_PURE_CAPABILITY__
     intptr_t              fScopeIndex = 0;
+#endif  // !__CHERI_PURE_CAPABILITY__
 
     // Error reporting.
     const char*           fErrorToken = nullptr;
