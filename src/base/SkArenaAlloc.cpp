@@ -26,7 +26,12 @@ SkArenaAlloc::SkArenaAlloc(char* block, size_t size, size_t firstHeapAllocation)
     }
 
     if (fCursor != nullptr) {
+#if defined(__CHERI_PURE_CAPABILITY__)
+        SkASSERT(__builtin_is_aligned(fCursor, alignof(max_align_t)));
+        this->installFooter(end_chain, 0, 0);
+#else   // !__CHERI_PURE_CAPABILITY__
         this->installFooter(end_chain, 0);
+#endif  // !__CHERI_PURE_CAPABILITY__
         sk_asan_poison_memory_region(fCursor, fEnd - fCursor);
     }
 }
@@ -35,15 +40,32 @@ SkArenaAlloc::~SkArenaAlloc() {
     RunDtorsOnBlock(fDtorCursor);
 }
 
+
+#if defined(__CHERI_PURE_CAPABILITY__)
+void SkArenaAlloc::installFooter(FooterAction* action, uint32_t padding, uint32_t footer_padding) {
+    assert(SkTFitsIn<uint8_t>(footer_padding));
+#else   // !__CHERI_PURE_CAPABILITY__
 void SkArenaAlloc::installFooter(FooterAction* action, uint32_t padding) {
+#endif  // !__CHERI_PURE_CAPABILITY__
     assert(SkTFitsIn<uint8_t>(padding));
     this->installRaw(action);
     this->installRaw((uint8_t)padding);
+#if defined(__CHERI_PURE_CAPABILITY__)
+    assert(SkTFitsIn<uint8_t>(footer_padding));
+    this->installRaw((uint8_t)footer_padding);
+#endif   // __CHERI_PURE_CAPABILITY__
     fDtorCursor = fCursor;
 }
 
 char* SkArenaAlloc::SkipPod(char* footerEnd) {
+#if defined(__CHERI_PURE_CAPABILITY__)
+    SkASSERT(__builtin_is_aligned(footerEnd - sizeof(Footer),  alignof(max_align_t)));
+    const Footer* footer = reinterpret_cast<Footer*>(footerEnd - sizeof(Footer));
+    SkASSERT(__builtin_is_aligned(footer,  alignof(max_align_t)));
+    char* objEnd = footerEnd - (sizeof(Footer) + sizeof(uint32_t) + footer->footer_padding);
+#else  // defined(__CHERI_PURE_CAPABILITY__)
     char* objEnd = footerEnd - (sizeof(Footer) + sizeof(uint32_t));
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     uint32_t skip;
     memmove(&skip, objEnd, sizeof(uint32_t));
     return objEnd - (ptrdiff_t) skip;
@@ -53,16 +75,34 @@ void SkArenaAlloc::RunDtorsOnBlock(char* footerEnd) {
     while (footerEnd != nullptr) {
         FooterAction* action;
         uint8_t       padding;
+#if defined(__CHERI_PURE_CAPABILITY__)
+        Footer* footer = reinterpret_cast<Footer*>(footerEnd - sizeof(Footer));
+        // Note that the footerEnd is not aligned to alignof(max_align_t) as
+        // the Footer data type is packed to 1-byte. However, the footer miust
+        // be aligned to alignof(max_align_t) as the first field contains the
+        // action (a sentry).
+        SkASSERT(__builtin_is_aligned(footer, alignof(max_align_t)));
+        action = footer->action;
+        padding = footer->padding;
+#else   // !__CHERI_PURE_CAPABILITY__
 
         memcpy(&action,  footerEnd - sizeof( Footer), sizeof( action));
         memcpy(&padding, footerEnd - sizeof(padding), sizeof(padding));
+#endif  // !__CHERI_PURE_CAPABILITY__
 
         footerEnd = action(footerEnd) - (ptrdiff_t)padding;
     }
 }
 
 char* SkArenaAlloc::NextBlock(char* footerEnd) {
+#if defined(__CHERI_PURE_CAPABILITY__)
+    SkASSERT(__builtin_is_aligned(footerEnd - sizeof(Footer),  alignof(max_align_t)));
+    const Footer* footer = reinterpret_cast<Footer*>(footerEnd - sizeof(Footer));
+    char* objEnd = footerEnd - (sizeof(char*) + sizeof(Footer) + footer->footer_padding);
+    SkASSERT(__builtin_is_aligned(objEnd, alignof(max_align_t)));
+#else  // defined(__CHERI_PURE_CAPABILITY__)
     char* objEnd = footerEnd - (sizeof(char*) + sizeof(Footer));
+#endif  // !__CHERI_PURE_CAPABILITY__
     char* next;
     memmove(&next, objEnd, sizeof(char*));
     RunDtorsOnBlock(next);
@@ -102,16 +142,70 @@ void SkArenaAlloc::ensureSpace(uint32_t size, uint32_t alignment) {
     // poison the unused bytes in the block.
     sk_asan_poison_memory_region(fCursor, fEnd - fCursor);
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+    // Align to max_align_t before storing the Dtor cursor, to ensure the
+    // capability is correctly aligned. Note: This is padding added before the
+    // value.
+    const uint32_t padding = SkToU32(
+        __builtin_align_up(fCursor, alignof(max_align_t)) - fCursor);
+    fCursor = __builtin_align_up(fCursor, alignof(max_align_t));
+#endif   // __CHERI_PURE_CAPABILITY__
     this->installRaw(previousDtor);
+#if defined(__CHERI_PURE_CAPABILITY__)
+    SkASSERT(__builtin_is_aligned(fCursor, alignof(max_align_t)));
+    this->installFooter(NextBlock, padding, 0);
+#else   // !__CHERI_PURE_CAPABILITY__
     this->installFooter(NextBlock, 0);
+#endif  // !__CHERI_PURE_CAPABILITY__
 }
 
-char* SkArenaAlloc::allocObjectWithFooter(uint32_t sizeIncludingFooter, uint32_t alignment) {
 #if defined(__CHERI_PURE_CAPABILITY__)
-    __attribute__((cheri_no_provenance))
-#endif // defined(__CHERI_PURE_CAPABILITY__)
-    uintptr_t mask = alignment - 1;
+char* SkArenaAlloc::allocObjectWithFooter(uint32_t sizeExcludingFooter, uint32_t alignment) {
+restart:
+    uint32_t skipOverhead = 0;
+    const bool needsSkipFooter = fCursor != fDtorCursor;
+    if (needsSkipFooter) {
+        // Calculator the size of the skip footer, including the required
+	// padding to align the Footer to alignof(max_align_t).
+        skipOverhead = sizeof(Footer) +
+            __builtin_align_up(fCursor + sizeof(uint32_t), alignof(max_align_t)) - fCursor;
+    }
+    // Calculator the total size, including the required padding to align the
+    // Footer to alignof(max_align_t).
+    const uint32_t totalSize = sizeof(Footer) +
+        (__builtin_align_up(fCursor + skipOverhead, alignment) + sizeExcludingFooter - fCursor);
 
+    // Math on null fCursor/fEnd is undefined behavior, so explicitly check for first alloc.
+    if (!fCursor) {
+        this->ensureSpace(totalSize, alignment);
+        goto restart;
+    }
+
+    assert(fEnd);
+    // This test alone would be enough nullptr were defined to be 0, but it's not.
+    char* objStart = __builtin_align_up(fCursor + skipOverhead, alignment);
+    if ((ptrdiff_t)totalSize > fEnd - objStart) {
+        this->ensureSpace(totalSize, alignment);
+        goto restart;
+    }
+
+    AssertRelease((ptrdiff_t)totalSize <= fEnd - objStart);
+
+    // Install a skip footer if needed, thus terminating a run of POD data. The calling code is
+    // responsible for installing the footer after the object.
+    if (needsSkipFooter) {
+        this->installRaw(SkToU32(fCursor - fDtorCursor));
+        const uint32_t footerPadding = SkToU32(
+            __builtin_align_up(fCursor, alignof(max_align_t)) - fCursor);
+	fCursor = __builtin_align_up(fCursor, alignof(max_align_t));
+        this->installFooter(SkipPod, 0, footerPadding);
+    }
+
+    return objStart;
+}
+#else   // !__CHERI_PURE_CAPABILITY__
+char* SkArenaAlloc::allocObjectWithFooter(uint32_t sizeIncludingFooter, uint32_t alignment) {
+    uintptr_t mask = alignment - 1;
 restart:
     uint32_t skipOverhead = 0;
     const bool needsSkipFooter = fCursor != fDtorCursor;
@@ -145,6 +239,7 @@ restart:
 
     return objStart;
 }
+#endif  // !__CHERI_PURE_CAPABILITY__
 
 SkArenaAllocWithReset::SkArenaAllocWithReset(char* block,
                                              size_t size,
