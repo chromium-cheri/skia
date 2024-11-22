@@ -464,7 +464,11 @@ bool GrClearImage(const GrImageInfo& dstInfo, void* dst, size_t dstRB, std::arra
     SkRasterPipelineOp store;
     skgpu::Swizzle storeSwizzle = get_dst_swizzle_and_store(dstInfo.colorType(), &store, &lumMode,
                                                             &isNormalized, &dstIsSRGB);
+#if defined(__CHERI_PURE_CAPABILITY__)
+    alignas(max_align_t) char block[64];
+#else   // !__CHERI_PURE_CAPABILITY__)
     char block[64];
+#endif  // !__CHERI_PURE_CAPABILITY__)
     SkArenaAlloc alloc(block, sizeof(block), 1024);
     SkRasterPipeline_<256> pipeline;
     pipeline.appendConstantColor(&alloc, color.data());

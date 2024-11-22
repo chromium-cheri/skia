@@ -10,6 +10,7 @@
 
 #include "include/private/base/SkASAN.h"
 #include "include/private/base/SkAssert.h"
+#include "include/private/base/SkDebug.h"
 #include "include/private/base/SkSpan_impl.h"
 #include "include/private/base/SkTFitsIn.h"
 #include "include/private/base/SkTo.h"
@@ -129,7 +130,11 @@ public:
             fCursor = objStart + size;
             sk_asan_unpoison_memory_region(objStart, size);
         } else {
+#if defined(__CHERI_PURE_CAPABILITY__)
+            objStart = this->allocObjectWithFooter(size, alignment);
+#else   // !__CHERI_PURE_CAPABILITY__
             objStart = this->allocObjectWithFooter(size + sizeof(Footer), alignment);
+#endif  // !__CHERI_PURE_CAPABILITY__
             // Can never be UB because max value is alignof(T).
             uint32_t padding = SkToU32(objStart - fCursor);
 
@@ -137,11 +142,23 @@ public:
             fCursor = objStart + size;
             sk_asan_unpoison_memory_region(objStart, size);
             FooterAction* releaser = [](char* objEnd) {
+#if defined(__CHERI_PURE_CAPABILITY__)
+	        Footer* footer = reinterpret_cast<Footer*>(objEnd - sizeof(Footer)); 
+                SkASSERT(__builtin_is_aligned(footer,  alignof(max_align_t)));
+                char* objStart = objEnd - (sizeof(T) + sizeof(Footer) + footer->footer_padding);
+#else   // !__CHERI_PURE_CAPABILITY__
                 char* objStart = objEnd - (sizeof(T) + sizeof(Footer));
+#endif  // !__CHERI_PURE_CAPABILITY__
                 ((T*)objStart)->~T();
                 return objStart;
             };
+#if defined(__CHERI_PURE_CAPABILITY__)
+            fCursor = __builtin_align_up(objStart + size, alignof(max_align_t));
+            uint32_t footerPadding = SkToU32(fCursor - (objStart + size));
+            this->installFooter(releaser, padding, footerPadding);
+#else   // !__CHERI_PURE_CAPABILITY__
             this->installFooter(releaser, padding);
+#endif  // !__CHERI_PURE_CAPABILITY__
         }
 
         // This must be last to make objects with nested use of this allocator work.
@@ -221,10 +238,20 @@ public:
 
 protected:
     using FooterAction = char* (char*);
+#if defined(__CHERI_PURE_CAPABILITY__)
+    #pragma pack(push, 1)
+    struct Footer {
+        FooterAction* action;
+        uint8_t padding;
+        uint8_t footer_padding;
+    };
+    #pragma pack(pop)
+#else   // !__CHERI_PURE_CAPABILITY__
     struct Footer {
         uint8_t unaligned_action[sizeof(FooterAction*)];
         uint8_t padding;
     };
+#endif  // !__CHERI_PURE_CAPABILITY__
 
     char* cursor() { return fCursor; }
     char* end() { return fEnd; }
@@ -242,26 +269,37 @@ private:
         memcpy(fCursor, &val, sizeof(val));
         fCursor += sizeof(val);
     }
+#if defined(__CHERI_PURE_CAPABILITY__)
+    void installFooter(FooterAction* releaser, uint32_t padding, uint32_t footer_padding);
+#else   // !__CHERI_PURE_CAPABILITY__
     void installFooter(FooterAction* releaser, uint32_t padding);
+#endif  // !__CHERI_PURE_CAPABILITY__
 
     void ensureSpace(uint32_t size, uint32_t alignment);
 
     char* allocObject(uint32_t size, uint32_t alignment) {
-#if defined(__CHERI_PURE_CAPABILITY__)
-        __attribute__((cheri_no_provenance))
-#endif // defined(__CHERI_PURE_CAPABILITY__)
+#if __has_builtin(__builtin_align_up)
+        size_t totalSize = __builtin_align_up(size, alignment);
+#else
         uintptr_t mask = alignment - 1;
         uintptr_t alignedOffset = (~reinterpret_cast<uintptr_t>(fCursor) + 1) & mask;
         uintptr_t totalSize = size + alignedOffset;
+#endif
         AssertRelease(totalSize >= size);
         if (totalSize > static_cast<uintptr_t>(fEnd - fCursor)) {
             this->ensureSpace(size, alignment);
+#if !__has_builtin(__builtin_align_up)
             alignedOffset = (~reinterpret_cast<uintptr_t>(fCursor) + 1) & mask;
+#endif
         }
 
+#if __has_builtin(__builtin_align_up)
+        char* object = __builtin_align_up(fCursor, alignment);
+#else
         char* object = fCursor + alignedOffset;
 
         SkASSERT((reinterpret_cast<uintptr_t>(object) & (alignment - 1)) == 0);
+#endif
         SkASSERT(object + size <= fEnd);
 
         return object;
@@ -285,7 +323,11 @@ private:
             fCursor = objStart + arraySize;
             sk_asan_unpoison_memory_region(objStart, arraySize);
         } else {
+#if defined(__CHERI_PURE_CAPABILITY__)
             constexpr uint32_t overhead = sizeof(Footer) + sizeof(uint32_t);
+#else    // !__CHERI_PURE_CAPABILITY__
+            const uint32_t overhead = sizeof(uint32_t);
+#endif   // !__CHERI_PURE_CAPABILITY__
             AssertRelease(arraySize <= std::numeric_limits<uint32_t>::max() - overhead);
             uint32_t totalSize = arraySize + overhead;
             objStart = this->allocObjectWithFooter(totalSize, alignment);
@@ -297,9 +339,24 @@ private:
             fCursor = objStart + arraySize;
             sk_asan_unpoison_memory_region(objStart, arraySize);
             this->installRaw(SkToU32(count));
+#if defined(__CHERI_PURE_CAPABILITY__)
+	    const ptraddr_t fCursorUnaligned = static_cast<ptraddr_t>(
+                reinterpret_cast<uintptr_t>(fCursor));
+            const uint32_t footerPadding = SkToU32(
+                 __builtin_align_up(fCursorUnaligned, alignof(max_align_t)) -
+                 fCursorUnaligned);
+     	    fCursor = __builtin_align_up(fCursor, alignof(max_align_t));
+#endif   // __CHERI_PURE_CAPABILITY__
             this->installFooter(
                 [](char* footerEnd) {
+#if defined(__CHERI_PURE_CAPABILITY__)
+	            Footer* footer = reinterpret_cast<Footer*>(footerEnd - sizeof(Footer)); 
+                    SkASSERT(__builtin_is_aligned(footer,  alignof(max_align_t)));
+                    char* objEnd = footerEnd -
+                        (sizeof(Footer) + sizeof(uint32_t) + footer->footer_padding);
+#else   // !__CHERI_PURE_CAPABILITY__
                     char* objEnd = footerEnd - (sizeof(Footer) + sizeof(uint32_t));
+#endif  // !__CHERI_PURE_CAPABILITY__
                     uint32_t count;
                     memmove(&count, objEnd, sizeof(uint32_t));
                     char* objStart = objEnd - count * sizeof(T);
@@ -309,7 +366,12 @@ private:
                     }
                     return objStart;
                 },
+#if defined(__CHERI_PURE_CAPABILITY__)
+		padding,
+		footerPadding);
+#else   // !__CHERI_PURE_CAPABILITY__
                 padding);
+#endif  // !__CHERI_PURE_CAPABILITY__
         }
 
         return (T*)objStart;
