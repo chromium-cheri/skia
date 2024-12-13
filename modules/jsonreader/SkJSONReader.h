@@ -207,7 +207,11 @@ protected:
             // For 32-bit, pointers are stored unmodified.
             ? *this->cast<const T*>()
             // For 64-bit, we use the lower bits of the pointer as tag storage.
+#if defined(__CHERI_PURE_CAPABILITY__)
+            : reinterpret_cast<T*>(*this->cast<uintptr_t>() & ~static_cast<ptraddr_t>(kTagMask));
+#else   // !__CHERI_PURE_CAPABILITY__
             : reinterpret_cast<T*>(*this->cast<uintptr_t>() & ~static_cast<uintptr_t>(kTagMask));
+#endif  // !__CHERI_PURE_CAPABILITY__
     }
 
 private:
