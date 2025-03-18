@@ -41,10 +41,10 @@ struct RunFontStorageEquivalent {
 #if defined(__CHERI_PURE_CAPABILITY__)
     void*    fTypeface;
     SkScalar fSize, fScaleX;
-#else // defined(__CHERI_PURE_CAPABILITY__)
+#else   // !__CHERI_PURE_CAPABILITY__
     SkScalar fSize, fScaleX;
     void*    fTypeface;
-#endif // defined(__CHERI_PURE_CAPABILITY__)
+#endif  // !__CHERI_PURE_CAPABILITY__
     SkScalar fSkewX;
     uint32_t fFlags;
 };
@@ -86,8 +86,13 @@ const SkTextBlob::RunRecord* SkTextBlob::RunRecord::Next(const RunRecord* run) {
 namespace {
 struct RunRecordStorageEquivalent {
     SkFont   fFont;
+#if defined(__CHERI_PURE_CAPABILITY__)
+    uint32_t fCount;
+    SkPoint  fOffset;
+#else   // !__CHERI_PURE_CAPABILITY__
     SkPoint  fOffset;
     uint32_t fCount;
+#endif  // !__CHERI_PURE_CAPABILITY__
     uint32_t fFlags;
     SkDEBUGCODE(unsigned fMagic;)
 };
