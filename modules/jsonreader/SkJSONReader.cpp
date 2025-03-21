@@ -33,10 +33,10 @@ namespace skjson {
 #if defined(__CHERI_PURE_CAPABILITY__)
 static_assert( sizeof(Value) == sizeof(void *), "");
 static_assert(alignof(Value) == alignof(max_align_t), "");
-#else // defined(__CHERI_PURE_CAPABILITY__)
+#else   // !__CHERI_PURE_CAPABILITY__
 static_assert( sizeof(Value) == 8, "");
 static_assert(alignof(Value) == 8, "");
-#endif // defined(__CHERI_PURE_CAPABILITY__)
+#endif  // !__CHERI_PURE_CAPABILITY__
 
 static constexpr size_t kRecAlign = alignof(Value);
 
@@ -49,10 +49,15 @@ void Value::init_tagged(Tag t) {
 // Pointer values store a type (in the lower kTagBits bits) and a pointer.
 void Value::init_tagged_pointer(Tag t, void* p) {
     if (sizeof(Value) == sizeof(uintptr_t)) {
-        *this->cast<uintptr_t>() = reinterpret_cast<uintptr_t>(p);
+#if defined(__CHERI_PURE_CAPABILITY__)
+        // Ensure capability provenance is preserved by casting to to uintptr_t
+        // before storing the tag in the lower kTagBit bits.
+        *this->cast<uintptr_t>() = reinterpret_cast<uintptr_t>(p) | SkTo<uint8_t>(t);
+#else   // !__CHERI_PURE_CAPABILITY__
         // For 64-bit, we rely on the pointer lower bits being zero.
         SkASSERT(!(fData8[0] & kTagMask));
         fData8[0] |= SkTo<uint8_t>(t);
+#endif  // !__CHERI_PURE_CAPABILITY__
     } else {
         // For 32-bit, we store the pointer in the upper word
         SkASSERT(sizeof(Value) == sizeof(uintptr_t) * 2);
@@ -96,11 +101,21 @@ NumberValue::NumberValue(float f) {
 template <typename T, size_t extra_alloc_size = 0>
 static void* MakeVector(size_t vec_size, const void* src, size_t src_size, SkArenaAlloc& alloc) {
     // The Ts are already in memory, so their size should be safe.
+#if defined(__CHERI_PURE_CAPABILITY__)
+    const auto aligned_size = __builtin_align_up(sizeof(size_t), alignof(max_align_t));
+    const auto total_size = aligned_size + vec_size * sizeof(T) + extra_alloc_size;
+#else   // !__CHERI_PURE_CAPABILITY__
     const auto total_size = sizeof(size_t) + vec_size * sizeof(T) + extra_alloc_size;
+#endif  // !__CHERI_PURE_CAPABILITY__
     auto* size_ptr = reinterpret_cast<size_t*>(alloc.makeBytesAlignedTo(total_size, kRecAlign));
 
-    *size_ptr = vec_size;
-    sk_careful_memcpy(size_ptr + 1, src, src_size * sizeof(T));
+    *size_ptr = size;
+#if defined(__CHERI_PURE_CAPABILITY__)
+    const auto aligned_ptr = __builtin_align_up(size_ptr + 1, alignof(max_align_t));
+    sk_careful_memcpy(aligned_ptr, src, size * sizeof(T));
+#else   // !__CHERI_PURE_CAPABILITY__
+    sk_careful_memcpy(size_ptr + 1, src, size * sizeof(T));
+#endif  // !__CHERI_PURE_CAPABILITY__
 
     return size_ptr;
 }
@@ -156,7 +171,11 @@ public:
 
 private:
     // first byte reserved for tagging, \0 terminator => 6 usable chars
+#if defined(__CHERI_PURE_CAPABILITY__)
+    inline static constexpr size_t kMaxInlineStringSize = sizeof(uint64_t) - 2;
+#else    // __CHERI_PURE_CAPABILITY__
     inline static constexpr size_t kMaxInlineStringSize = sizeof(Value) - 2;
+#endif   // __CHERI_PURE_CAPABILITY__
 
     void initLongString(const char* src, size_t size, SkArenaAlloc& alloc) {
         SkASSERT(size > kMaxInlineStringSize);
@@ -178,7 +197,12 @@ private:
     void initFastShortString(const char* src, size_t size) {
         SkASSERT(size <= kMaxInlineStringSize);
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+        //this->init_tagged(Tag::kShortString);
+        uint64_t* s64 = reinterpret_cast<uint64_t *>(this->cast<uintptr_t>());
+#else    // __CHERI_PURE_CAPABILITY__
         uint64_t* s64 = this->cast<uint64_t>();
+#endif   // __CHERI_PURE_CAPABILITY__
 
         // Load 8 chars and mask out the tag and \0 terminator.
         // Note: we picked kShortString == 0 to avoid setting explicitly below.
@@ -561,7 +585,11 @@ private:
         // Restore the previous scope index from saved placeholder value,
         // and instantiate as a vector of values in scope.
         auto& placeholder = fValueStack[scope_start - 1];
+#if defined(__CHERI_PURE_CAPABILITY__)
+        fScopeIndex = *static_cast<RawValue<ssize_t>&>(placeholder);
+#else   // !__CHERI_PURE_CAPABILITY__
         fScopeIndex = *static_cast<RawValue<intptr_t>&>(placeholder);
+#endif  // !__CHERI_PURE_CAPABILITY__
         placeholder = VectorT(begin, count, fAlloc);
 
         // Drop the (consumed) values in scope.
@@ -570,15 +598,27 @@ private:
 
     void pushObjectScope() {
         // Save a scope index now, and then later we'll overwrite this value as the Object itself.
+#if defined(__CHERI_PURE_CAPABILITY__)
+        fValueStack.push_back(RawValue<ssize_t>(fScopeIndex));
+#else   // !__CHERI_PURE_CAPABILITY__
         fValueStack.push_back(RawValue<intptr_t>(fScopeIndex));
+#endif  // !__CHERI_PURE_CAPABILITY__
 
         // New object scope.
+#if defined(__CHERI_PURE_CAPABILITY__)
+        fScopeIndex = SkTo<ssize_t>(fValueStack.size());
+#else   // !__CHERI_PURE_CAPABILITY__
         fScopeIndex = SkTo<intptr_t>(fValueStack.size());
+#endif  // !__CHERI_PURE_CAPABILITY__
     }
 
     void popObjectScope() {
         SkASSERT(this->inObjectScope());
-        this->popScopeAsVec<ObjectValue>(SkTo<size_t>(fScopeIndex));
+#if defined(__CHERI_PURE_CAPABILITY__)
+        this->popScopeAsVec<ObjectValue>(SkTo<ssize_t>(fScopeIndex));
+#else   // !__CHERI_PURE_CAPABILITY__
+        this->popScopeAsVec<ObjectValue>(SkTo<intptr_t>(fScopeIndex));
+#endif  // !__CHERI_PURE_CAPABILITY__
 
         SkDEBUGCODE(
             const auto& obj = fValueStack.back().as<ObjectValue>();
@@ -591,15 +631,27 @@ private:
 
     void pushArrayScope() {
         // Save a scope index now, and then later we'll overwrite this value as the Array itself.
+#if defined(__CHERI_PURE_CAPABILITY__)
+        fValueStack.push_back(RawValue<ssize_t>(fScopeIndex));
+#else   // !__CHERI_PURE_CAPABILITY__
         fValueStack.push_back(RawValue<intptr_t>(fScopeIndex));
+#endif  // !__CHERI_PURE_CAPABILITY__
 
         // New array scope.
+#if defined(__CHERI_PURE_CAPABILITY__)
+        fScopeIndex = -SkTo<ssize_t>(fValueStack.size());
+#else   // !__CHERI_PURE_CAPABILITY__
         fScopeIndex = -SkTo<intptr_t>(fValueStack.size());
+#endif  // !__CHERI_PURE_CAPABILITY__
     }
 
     void popArrayScope() {
         SkASSERT(this->inArrayScope());
-        this->popScopeAsVec<ArrayValue>(SkTo<size_t>(-fScopeIndex));
+#if defined(__CHERI_PURE_CAPABILITY__)
+        this->popScopeAsVec<ArrayValue>(SkTo<ssize_t>(-fScopeIndex));
+#else   // !__CHERI_PURE_CAPABILITY__
+        this->popScopeAsVec<ArrayValue>(SkTo<intptr_t>(-fScopeIndex));
+#endif  // !__CHERI_PURE_CAPABILITY__
 
         SkDEBUGCODE(
             const auto& arr = fValueStack.back().as<ArrayValue>();
@@ -609,8 +661,13 @@ private:
 
     void pushObjectKey(const char* key, size_t size, const char* eos) {
         SkASSERT(this->inObjectScope());
-        SkASSERT(fValueStack.size() >= SkTo<size_t>(fScopeIndex));
-        SkASSERT(!((fValueStack.size() - SkTo<size_t>(fScopeIndex)) & 1));
+#if defined(__CHERI_PURE_CAPABILITY__)
+        SkASSERT(fValueStack.size() >= SkTo<ssize_t>(fScopeIndex));
+        SkASSERT(!((fValueStack.size() - SkTo<ssize_t>(fScopeIndex)) & 1));
+#else   // !__CHERI_PURE_CAPABILITY__
+        SkASSERT(fValueStack.size() >= SkTo<intptr_t>(fScopeIndex));
+        SkASSERT(!((fValueStack.size() - SkTo<intptr_t>(fScopeIndex)) & 1));
+#endif  // !__CHERI_PURE_CAPABILITY__
         this->pushString(key, size, eos);
     }
 

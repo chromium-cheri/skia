@@ -56,9 +56,9 @@ namespace skjson {
  */
 #if defined(__CHERI_PURE_CAPABILITY__)
 class alignas(max_align_t) Value {
-#else // defined(__CHERI_PURE_CAPABILITY__)
+#else   // !__CHERI_PURE_CAPABILITY__
 class alignas(8) Value {
-#endif // defined(__CHERI_PURE_CAPABILITY__)
+#endif  // !__CHERI_PURE_CAPABILITY__
 public:
     enum class Type {
         kNull,
@@ -150,7 +150,13 @@ protected:
     void init_tagged_pointer(Tag, void*);
 
     Tag getTag() const {
+#if defined(__CHERI_PURE_CAPABILITY__)
+        // Ensure capability provenance is preserved by casting to to uintptr_t
+        // before returning the tag in the lower kTagBit bits.
+        return static_cast<Tag>(*this->cast<uintptr_t>() & kTagMask);
+#else   // !__CHERI_PURE_CAPABILITY__
         return static_cast<Tag>(fData8[0] & kTagMask);
+#endif  // !__CHERI_PURE_CAPABILITY__
     }
 
     // Access the record payload as T.
@@ -216,12 +222,17 @@ protected:
 
 private:
 #if defined(__CHERI_PURE_CAPABILITY__)
-    inline static constexpr size_t kValueSize = 16;
-#else // defined(__CHERI_PURE_CAPABILITY__)
+    inline static constexpr size_t kValueSize = sizeof(uintptr_t);
+
+    union {
+      uintptr_t fDataPtr;
+      uint8_t fData8[kValueSize];
+    };
+#else   // !__CHERI_PURE_CAPABILITY__
     inline static constexpr size_t kValueSize = 8;
-#endif // defined(__CHERI_PURE_CAPABILITY__)
 
     uint8_t fData8[kValueSize];
+#endif  // !__CHERI_PURE_CAPABILITY__
 
 #if !defined(SK_CPU_LENDIAN)
     // The current value layout assumes LE and will take some tweaking for BE.
@@ -277,13 +288,23 @@ public:
     const T* begin() const {
         SkASSERT(this->getType() == kType);
         const auto* size_ptr = this->ptr<size_t>();
+#if defined(__CHERI_PURE_CAPABILITY__)
+        const auto aligned_ptr = __builtin_align_up(size_ptr + 1, alignof(max_align_t));
+        return reinterpret_cast<const T*>(aligned_ptr);
+#else   // !__CHERI_PURE_CAPABILITY__
         return reinterpret_cast<const T*>(size_ptr + 1);
+#endif  // !__CHERI_PURE_CAPABILITY__
     }
 
     const T* end() const {
         SkASSERT(this->getType() == kType);
         const auto* size_ptr = this->ptr<size_t>();
+#if defined(__CHERI_PURE_CAPABILITY__)
+        const auto aligned_ptr = __builtin_align_up(size_ptr + 1, alignof(max_align_t));
+        return reinterpret_cast<const T*>(aligned_ptr) + *size_ptr;
+#else   // !__CHERI_PURE_CAPABILITY__
         return reinterpret_cast<const T*>(size_ptr + 1) + *size_ptr;
+#endif  // !__CHERI_PURE_CAPABILITY__
     }
 
     const T& operator[](size_t i) const {
