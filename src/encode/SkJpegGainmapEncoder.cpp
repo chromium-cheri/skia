@@ -212,7 +212,7 @@ std::vector<sk_sp<SkData>> get_hdrgm_image_segments(sk_sp<SkData> image,
 
         // Write the rest of the segment.
         size_t bytesToWrite =
-                std::min(imageDataEnd - imageData, static_cast<intptr_t>(kGainmapPayloadSize));
+                std::min(imageDataEnd - imageData, static_cast<ptrdiff_t>(kGainmapPayloadSize));
         segmentStream.write(imageData, bytesToWrite);
         imageData += bytesToWrite;
 
