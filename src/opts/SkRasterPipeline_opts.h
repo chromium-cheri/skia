@@ -1847,7 +1847,11 @@ SI void from_16161616(U64 _16161616, F* r, F* g, F* b, F* a) {
 // Used by load_ and store_ stages to get to the right (dx,dy) starting point of contiguous memory.
 template <typename T>
 SI T* ptr_at_xy(const SkRasterPipelineContexts::MemoryCtx* ctx, const size_t dx, const size_t dy) {
+#if defined(__CHERI_PURE_CAPABILITY__)
+    return (T*)ctx->pixels + (dy - ctx->top)*ctx->stride + (dx - ctx->left);
+#else
     return (T*)ctx->pixels + dy*ctx->stride + dx;
+#endif
 }
 
 // clamp v to [0,limit).
@@ -5910,7 +5914,11 @@ LOWP_STAGE_PP(swap_src_dst, NoCtx) {
 
 template <typename T>
 SI T* ptr_at_xy(const SkRasterPipelineContexts::MemoryCtx* ctx, const size_t dx, const size_t dy) {
+#if defined(__CHERI_PURE_CAPABILITY__)
+    return (T*)ctx->pixels + (dy - ctx->top)*ctx->stride + (dx - ctx->left);
+#else
     return (T*)ctx->pixels + dy*ctx->stride + dx;
+#endif
 }
 
 template <typename T>

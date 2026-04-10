@@ -35,6 +35,10 @@ inline static constexpr size_t kMaxScratchPerPatch =
 struct MemoryCtx {
     void* pixels;
     int   stride;
+#if defined(__CHERI_PURE_CAPABILITY__)
+    int   left;
+    int   top;
+#endif
 };
 
 // Raster Pipeline typically processes N (4, 8, 16) pixels at a time, in SIMT fashion. If the
