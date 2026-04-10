@@ -175,8 +175,14 @@ public:
         // Representing bpp as a size_t keeps all this math in size_t instead of int,
         // which could wrap around with large enough fSrcPtr.stride and y.
         size_t bpp = fSource.info().bytesPerPixel();
+#if defined(__CHERI_PURE_CAPABILITY__)
+        fSrcPtr.left = fLeft;
+        fSrcPtr.top = fTop;
+        fSrcPtr.pixels = (char*)fSource.addr();
+#else
         fSrcPtr.pixels = (char*)fSource.addr(-fLeft+x, -fTop+y) - bpp * x
                                                                 - bpp * y * fSrcPtr.stride;
+#endif
 
         fBlitter->blitRect(x,y,width,height);
     }

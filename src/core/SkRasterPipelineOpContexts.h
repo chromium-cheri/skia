@@ -23,6 +23,10 @@ inline static constexpr int SkRasterPipeline_kMaxStride_highp = 8;
 struct SkRasterPipeline_MemoryCtx {
     void* pixels;
     int   stride;
+#if defined(__CHERI_PURE_CAPABILITY__)
+    int   left;
+    int   top;
+#endif
 };
 
 struct SkRasterPipeline_GatherCtx {
